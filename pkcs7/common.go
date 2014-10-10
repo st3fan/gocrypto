@@ -20,9 +20,9 @@ var (
 	oidCountryName            = asn1.ObjectIdentifier{2, 5, 4, 6}
 	oidPKCS7Data              = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 1}
 	oidPKCS7SignedData        = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 2}
-	oidSha1                   = asn1.ObjectIdentifier{1, 3, 14, 3, 2, 26}
-	oidSha256                 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
-	oidRsaEncryption          = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
+	oidSHA1                   = asn1.ObjectIdentifier{1, 3, 14, 3, 2, 26}
+	oidSHA256                 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
+	oidPKCS1RSAEncryption     = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
 )
 
 type AlgorithmIdentifier struct {
