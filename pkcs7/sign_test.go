@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"github.com/st3fan/gocrypto/pkcs7"
 	"io/ioutil"
 	"os"
 	"testing"
