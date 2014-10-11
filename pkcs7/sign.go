@@ -56,13 +56,14 @@ func Sign(r io.Reader, cert *x509.Certificate, priv *rsa.PrivateKey) ([]byte, er
 		return nil, err
 	}
 
+	originalFirstByte := encodedAuthenticatedAttributes[0] // TODO: Explain why this is needed
 	encodedAuthenticatedAttributes[0] = 0x31
 
 	hash = sha256.New()
 	hash.Write(encodedAuthenticatedAttributes)
 	attributesDigest := hash.Sum(nil)
 
-	encodedAuthenticatedAttributes[0] = 0x30
+	encodedAuthenticatedAttributes[0] = originalFirstByte
 
 	encryptedDigest, err := rsa.SignPKCS1v15(rand.Reader, priv, crypto.SHA256, attributesDigest)
 	if err != nil {
