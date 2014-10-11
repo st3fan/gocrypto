@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -72,5 +73,20 @@ func Test_Sign(t *testing.T) {
 
 	if len(signature) == 0 {
 		t.Error("Signature is zero length")
+	}
+
+	// Verify the signature with OpenSSL
+
+	if err := ioutil.WriteFile("/tmp/signature", signature, 0600); err != nil {
+		panic(err)
+	}
+
+	cmd := exec.Command("openssl", "smime", "-verify", "-in", "/tmp/signature", "-content", "testdata/test.txt", "-inform", "der", "-noverify")
+	if err := cmd.Start(); err != nil {
+		t.Error("Failed to start openssl:", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		t.Error("Failed to verify signature with openssl:", err)
 	}
 }
