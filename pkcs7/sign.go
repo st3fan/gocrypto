@@ -15,17 +15,12 @@ import (
 	"time"
 )
 
-func Sign(r io.Reader, certData []byte, priv *rsa.PrivateKey) ([]byte, error) {
+func Sign(r io.Reader, cert *x509.Certificate, priv *rsa.PrivateKey) ([]byte, error) {
 	hash := sha256.New()
 	if _, err := io.Copy(hash, r); err != nil {
 		return nil, err
 	}
 	messageDigest := hash.Sum(nil)
-
-	cert, err := x509.ParseCertificate(certData)
-	if err != nil {
-		return nil, err
-	}
 
 	signedData := SignedData{
 		Version: 1,
@@ -35,7 +30,7 @@ func Sign(r io.Reader, certData []byte, priv *rsa.PrivateKey) ([]byte, error) {
 		ContentInfo: ContentInfo{
 			ContentType: oidPKCS7Data,
 		},
-		Certificates: asn1.RawValue{Class: 2, Tag: 0, Bytes: certData, IsCompound: true},
+		Certificates: asn1.RawValue{Class: 2, Tag: 0, Bytes: cert.Raw, IsCompound: true},
 		SignerInfos: []SignerInfo{
 			SignerInfo{
 				Version: 1,
