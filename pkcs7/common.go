@@ -31,7 +31,7 @@ type AlgorithmIdentifier struct {
 }
 
 type IssuerAndSerialNumber struct {
-	Issuer       asn1.RawValue `asn1:"explicit"`
+	Issuer       asn1.RawValue
 	SerialNumber *big.Int
 }
 

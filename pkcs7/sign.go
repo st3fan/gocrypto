@@ -56,7 +56,11 @@ func Sign(r io.Reader, cert *x509.Certificate, priv *rsa.PrivateKey) ([]byte, er
 		return nil, err
 	}
 
-	originalFirstByte := encodedAuthenticatedAttributes[0] // TODO: Explain why this is needed
+	// For the digest of the authenticated attributes, we need a
+	// slightly different encoding.  Change the attributes from a
+	// SEQUENCE to a SET.
+
+	originalFirstByte := encodedAuthenticatedAttributes[0]
 	encodedAuthenticatedAttributes[0] = 0x31
 
 	hash = sha256.New()
