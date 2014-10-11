@@ -65,7 +65,7 @@ func Test_Sign(t *testing.T) {
 	}
 	defer f.Close()
 
-	signature, err := pkcs7.Sign(f, cert, key)
+	signature, err := Sign(f, cert, key)
 	if err != nil {
 		t.Error("Cannot Sign:", err)
 	}
