@@ -5,9 +5,9 @@
 package pkcs7
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func Sign(r io.Reader, certData []byte, pub *rsa.PublicKey) ([]byte, error) {
+func Sign(r io.Reader, certData []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	hash := sha256.New()
 	if _, err := io.Copy(hash, r); err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func Sign(r io.Reader, certData []byte, pub *rsa.PublicKey) ([]byte, error) {
 					Issuer:       asn1.RawValue{FullBytes: cert.RawIssuer},
 					SerialNumber: cert.SerialNumber,
 				},
-				DigestAlgorithm: AlgorithmIdentifier{Algorithm: oidSHA1, Parameters: asn1.RawValue{Tag: 5}},
+				DigestAlgorithm: AlgorithmIdentifier{Algorithm: oidSHA256, Parameters: asn1.RawValue{Tag: 5}},
 				AuthenticatedAttributes: Attributes{
 					NewAttribute(oidPKCS9ContentType, oidPKCS7Data),
 					NewAttribute(oidPKCS9SigningTime, time.Now().UTC()),
@@ -63,11 +63,13 @@ func Sign(r io.Reader, certData []byte, pub *rsa.PublicKey) ([]byte, error) {
 
 	encodedAuthenticatedAttributes[0] = 0x31
 
-	hash = sha1.New()
+	hash = sha256.New()
 	hash.Write(encodedAuthenticatedAttributes)
 	attributesDigest := hash.Sum(nil)
 
-	encryptedDigest, err := rsa.EncryptPKCS1v15(rand.Reader, pub, attributesDigest)
+	encodedAuthenticatedAttributes[0] = 0x30
+
+	encryptedDigest, err := rsa.SignPKCS1v15(rand.Reader, priv, crypto.SHA256, attributesDigest)
 	if err != nil {
 		return nil, err
 	}
