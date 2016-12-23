@@ -11,40 +11,91 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
+	"errors"
 	"io"
 	"time"
 )
 
-func Sign(r io.Reader, cert *x509.Certificate, priv *rsa.PrivateKey) ([]byte, error) {
-	hash := sha256.New()
-	if _, err := io.Copy(hash, r); err != nil {
+// Create Signature of message
+// message must be of type io.Reader or []byte
+// Returns signature and any error encountered.
+func Sign(message interface{}, certificate *x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
+	return SignIntermediate(message, certificate, privateKey, nil)
+}
+
+// Create Signature of message including intermediate certificates.
+// message must be of type io.Reader or []byte
+// Returns signature and any error encountered.
+func SignIntermediate(message interface{}, certificate *x509.Certificate, privateKey *rsa.PrivateKey, intermediateCertificates []*x509.Certificate) ([]byte, error) {
+	// Check if parameters are valid
+	if certificate == nil {
+		return nil, errors.New("\"certificate\" cannot be nil.")
+	}
+
+	if privateKey == nil {
+		return nil, errors.New("\"privateKey\" cannot be nil.")
+	}
+
+	messageDigest, err := checksum(message)
+	if err != nil {
 		return nil, err
 	}
-	messageDigest := hash.Sum(nil)
 
-	signedData := SignedData{
+	// Copy intermediateCertificates to certificate stack
+	raw := certificate.Raw
+	if intermediateCertificates != nil {
+		for _, intermediate := range intermediateCertificates {
+			if intermediate != nil {
+				raw = append(raw, intermediate.Raw...)
+			}
+		}
+	}
+
+	signedData := signedData{
 		Version: 1,
-		DigestAlgorithms: []AlgorithmIdentifier{
-			AlgorithmIdentifier{Algorithm: oidSHA256, Parameters: asn1.RawValue{Tag: 5}},
+		DigestAlgorithms: []algorithmIdentifier{
+			{
+				Algorithm: oidSHA256,
+				Parameters: asn1.RawValue{
+					Tag: 5,
+				},
+			},
 		},
-		ContentInfo: ContentInfo{
+		ContentInfo: contentInfo{
 			ContentType: oidPKCS7Data,
 		},
-		Certificates: asn1.RawValue{Class: 2, Tag: 0, Bytes: cert.Raw, IsCompound: true},
-		SignerInfos: []SignerInfo{
-			SignerInfo{
+		Certificates: asn1.RawValue{
+			Class:      2,
+			Tag:        0,
+			Bytes:      raw,
+			IsCompound: true,
+		},
+		SignerInfos: []signerInfo{
+			{
 				Version: 1,
-				SignedIdentifier: IssuerAndSerialNumber{
-					Issuer:       asn1.RawValue{FullBytes: cert.RawIssuer},
-					SerialNumber: cert.SerialNumber,
+				SignedIdentifier: issuerAndSerialNumber{
+					Issuer: asn1.RawValue{
+						FullBytes: certificate.RawIssuer,
+					},
+					SerialNumber: certificate.SerialNumber,
 				},
-				DigestAlgorithm: AlgorithmIdentifier{Algorithm: oidSHA256, Parameters: asn1.RawValue{Tag: 5}},
-				AuthenticatedAttributes: Attributes{
-					NewAttribute(oidPKCS9ContentType, oidPKCS7Data),
-					NewAttribute(oidPKCS9SigningTime, time.Now().UTC()),
-					NewAttribute(oidPKCS9MessageDigest, messageDigest),
+				DigestAlgorithm: algorithmIdentifier{
+					Algorithm: oidSHA256,
+					Parameters: asn1.RawValue{
+						Tag: 5,
+					},
 				},
-				DigestEncryptionAlgorithm: AlgorithmIdentifier{Algorithm: oidPKCS1RSAEncryption, Parameters: asn1.RawValue{Tag: 5}},
+				AuthenticatedAttributes: []attribute{
+					newAttribute(oidPKCS9ContentType, oidPKCS7Data),
+					newAttribute(oidPKCS9SigningTime, time.Now().UTC()),
+					newAttribute(oidPKCS9MessageDigest, messageDigest),
+				},
+				DigestEncryptionAlgorithm: algorithmIdentifier{
+					Algorithm: oidPKCS1RSAEncryption,
+					Parameters: asn1.RawValue{
+						Tag: 5,
+					},
+				},
 				EncryptedDigest:           nil, // We fill this in later
 				UnauthenticatedAttributes: 0,
 			},
@@ -56,20 +107,17 @@ func Sign(r io.Reader, cert *x509.Certificate, priv *rsa.PrivateKey) ([]byte, er
 		return nil, err
 	}
 
-	// For the digest of the authenticated attributes, we need a
-	// slightly different encoding.  Change the attributes from a
-	// SEQUENCE to a SET.
-
 	originalFirstByte := encodedAuthenticatedAttributes[0]
 	encodedAuthenticatedAttributes[0] = 0x31
 
-	hash = sha256.New()
-	hash.Write(encodedAuthenticatedAttributes)
-	attributesDigest := hash.Sum(nil)
+	attributesDigest, err := checksum(encodedAuthenticatedAttributes)
+	if err != nil {
+		return nil, err
+	}
 
 	encodedAuthenticatedAttributes[0] = originalFirstByte
 
-	encryptedDigest, err := rsa.SignPKCS1v15(rand.Reader, priv, crypto.SHA256, attributesDigest)
+	encryptedDigest, err := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, attributesDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -80,10 +128,31 @@ func Sign(r io.Reader, cert *x509.Certificate, priv *rsa.PrivateKey) ([]byte, er
 		return nil, err
 	}
 
-	signedDataWrapper := SignedDataWrapper{
+	signedDataWrapper := signedDataWrapper{
 		Oid:        oidPKCS7SignedData,
 		SignedData: asn1.RawValue{Class: 2, Tag: 0, Bytes: encodedSignedData, IsCompound: true},
 	}
 
 	return asn1.Marshal(signedDataWrapper)
+}
+
+// Create sha256 checksum of message
+// message must be of type io.Reader or []byte
+// Returns checksum and any error encountered.
+func checksum(message interface{}) ([]byte, error) {
+	hash := sha256.New()
+
+	if msg, ok := message.(io.Reader); ok {
+		if _, err := io.Copy(hash, msg); err != nil {
+			return nil, err
+		}
+		return hash.Sum(nil), nil
+	}
+
+	if msg, ok := message.([]byte); ok {
+		hash.Write(msg)
+		return hash.Sum(nil), nil
+	}
+
+	return nil, errors.New("\"message\" must be of type io.Reader or []byte")
 }
