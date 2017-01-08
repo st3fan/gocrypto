@@ -43,11 +43,9 @@ func SignIntermediate(message interface{}, certificate *x509.Certificate, privat
 
 	// Copy intermediateCertificates to certificate stack
 	raw := certificate.Raw
-	if intermediateCertificates != nil {
-		for _, intermediate := range intermediateCertificates {
-			if intermediate != nil {
-				raw = append(raw, intermediate.Raw...)
-			}
+	for _, intermediate := range intermediateCertificates {
+		if intermediate != nil {
+			raw = append(raw, intermediate.Raw...)
 		}
 	}
 
