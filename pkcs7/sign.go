@@ -8,7 +8,6 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
@@ -16,17 +15,29 @@ import (
 	"time"
 )
 
-// Create Signature of message
-// message must be of type io.Reader or []byte
-// Returns signature and any error encountered.
-func Sign(message interface{}, certificate *x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
-	return SignIntermediate(message, certificate, privateKey, nil)
+// Create a signature from io.Reader
+// Returns the signature and any error encountered.
+func Sign(reader io.Reader, certificate *x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
+	hashable := NewHashableReader(reader)
+	return SignDataIntermediate(hashable, certificate, privateKey, nil)
 }
 
-// Create Signature of message including intermediate certificates.
-// message must be of type io.Reader or []byte
-// Returns signature and any error encountered.
-func SignIntermediate(message interface{}, certificate *x509.Certificate, privateKey *rsa.PrivateKey, intermediateCertificates []*x509.Certificate) ([]byte, error) {
+// Create a signature from io.Reader including intermediate certificates.
+// Returns the signature and any error encountered.
+func SignIntermediate(reader io.Reader, certificate *x509.Certificate, privateKey *rsa.PrivateKey, intermediateCertificates []*x509.Certificate) ([]byte, error) {
+	hashable := NewHashableReader(reader)
+	return SignDataIntermediate(hashable, certificate, privateKey, intermediateCertificates)
+}
+
+// Creates a signature
+// Returns the signature and any error encountered.
+func SignData(hashable Hashable, certificate *x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
+	return SignDataIntermediate(hashable, certificate, privateKey, nil)
+}
+
+// Create a signature including intermediate certificates.
+// Returns the signature and any error encountered.
+func SignDataIntermediate(hashable Hashable, certificate *x509.Certificate, privateKey *rsa.PrivateKey, intermediateCertificates []*x509.Certificate) ([]byte, error) {
 	// Check if parameters are valid
 	if certificate == nil {
 		return nil, errors.New("\"certificate\" cannot be nil.")
@@ -36,7 +47,7 @@ func SignIntermediate(message interface{}, certificate *x509.Certificate, privat
 		return nil, errors.New("\"privateKey\" cannot be nil.")
 	}
 
-	messageDigest, err := checksum(message)
+	messageDigest, err := hashable.Hash()
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +119,8 @@ func SignIntermediate(message interface{}, certificate *x509.Certificate, privat
 	originalFirstByte := encodedAuthenticatedAttributes[0]
 	encodedAuthenticatedAttributes[0] = 0x31
 
-	attributesDigest, err := checksum(encodedAuthenticatedAttributes)
+	digest := NewHashableBytes(encodedAuthenticatedAttributes)
+	attributesDigest, err := digest.Hash()
 	if err != nil {
 		return nil, err
 	}
@@ -132,25 +144,4 @@ func SignIntermediate(message interface{}, certificate *x509.Certificate, privat
 	}
 
 	return asn1.Marshal(signedDataWrapper)
-}
-
-// Create sha256 checksum of message
-// message must be of type io.Reader or []byte
-// Returns checksum and any error encountered.
-func checksum(message interface{}) ([]byte, error) {
-	hash := sha256.New()
-
-	if msg, ok := message.(io.Reader); ok {
-		if _, err := io.Copy(hash, msg); err != nil {
-			return nil, err
-		}
-		return hash.Sum(nil), nil
-	}
-
-	if msg, ok := message.([]byte); ok {
-		hash.Write(msg)
-		return hash.Sum(nil), nil
-	}
-
-	return nil, errors.New("\"message\" must be of type io.Reader or []byte")
 }
