@@ -23,6 +23,7 @@ func (h *hashableReader) Hash() ([]byte, error) {
 	return hash.Sum(nil), nil
 }
 
+// Creates a new Hashable from io.Reader
 func NewHashableReader(r io.Reader) Hashable {
 	return &hashableReader{r: r}
 }
@@ -37,6 +38,7 @@ func (h *hashableBytes) Hash() ([]byte, error) {
 	return hash.Sum(nil), nil
 }
 
+// Creates a new Hashable from bytes
 func NewHashableBytes(b []byte) Hashable {
 	return &hashableBytes{b: b}
 }

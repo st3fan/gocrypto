@@ -15,28 +15,28 @@ import (
 	"time"
 )
 
-// Create signature from Reader
-// Returns signature and any error encountered.
+// Create a signature from io.Reader
+// Returns the signature and any error encountered.
 func Sign(reader io.Reader, certificate *x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
 	hashable := NewHashableReader(reader)
 	return SignDataIntermediate(hashable, certificate, privateKey, nil)
 }
 
-// Create signature from Reader including intermediate certificates.
-// Returns signature and any error encountered.
+// Create a signature from io.Reader including intermediate certificates.
+// Returns the signature and any error encountered.
 func SignIntermediate(reader io.Reader, certificate *x509.Certificate, privateKey *rsa.PrivateKey, intermediateCertificates []*x509.Certificate) ([]byte, error) {
 	hashable := NewHashableReader(reader)
 	return SignDataIntermediate(hashable, certificate, privateKey, intermediateCertificates)
 }
 
-// Creates signature
-// Returns signature and any error encountered.
+// Creates a signature
+// Returns the signature and any error encountered.
 func SignData(hashable Hashable, certificate *x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
 	return SignDataIntermediate(hashable, certificate, privateKey, nil)
 }
 
-// Create signature including intermediate certificates.
-// Returns signature and any error encountered.
+// Create a signature including intermediate certificates.
+// Returns the signature and any error encountered.
 func SignDataIntermediate(hashable Hashable, certificate *x509.Certificate, privateKey *rsa.PrivateKey, intermediateCertificates []*x509.Certificate) ([]byte, error) {
 	// Check if parameters are valid
 	if certificate == nil {
