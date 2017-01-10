@@ -47,7 +47,7 @@ func SignDataIntermediate(hashable Hashable, certificate *x509.Certificate, priv
 		return nil, errors.New("\"privateKey\" cannot be nil.")
 	}
 
-	messageDigest, err := hashable.Hash()
+	messageDigest, err := hashable.Sha256()
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func SignDataIntermediate(hashable Hashable, certificate *x509.Certificate, priv
 	encodedAuthenticatedAttributes[0] = 0x31
 
 	digest := NewHashableBytes(encodedAuthenticatedAttributes)
-	attributesDigest, err := digest.Hash()
+	attributesDigest, err := digest.Sha256()
 	if err != nil {
 		return nil, err
 	}

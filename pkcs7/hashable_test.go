@@ -38,7 +38,7 @@ func Test_NewHashableReader(t *testing.T) {
 			continue
 		}
 
-		hash, err := hashable.Hash()
+		hash, err := hashable.Sha256()
 		if c.Error != "" {
 			if err != nil && err.Error() == c.Error {
 				continue
@@ -83,7 +83,7 @@ func Test_NewHashableBytes(t *testing.T) {
 			continue
 		}
 
-		hash, err := hashable.Hash()
+		hash, err := hashable.Sha256()
 		if c.Error != "" {
 			if err != nil && err.Error() == c.Error {
 				continue

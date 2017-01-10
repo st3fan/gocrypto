@@ -6,14 +6,14 @@ import (
 )
 
 type Hashable interface {
-	Hash() ([]byte, error)
+	Sha256() ([]byte, error)
 }
 
 type hashableReader struct {
 	r io.Reader
 }
 
-func (h *hashableReader) Hash() ([]byte, error) {
+func (h *hashableReader) Sha256() ([]byte, error) {
 	hash := sha256.New()
 
 	if _, err := io.Copy(hash, h.r); err != nil {
@@ -32,7 +32,7 @@ type hashableBytes struct {
 	b []byte
 }
 
-func (h *hashableBytes) Hash() ([]byte, error) {
+func (h *hashableBytes) Sha256() ([]byte, error) {
 	hash := sha256.New()
 	hash.Write(h.b)
 	return hash.Sum(nil), nil
