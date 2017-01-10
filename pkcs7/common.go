@@ -25,57 +25,60 @@ var (
 	oidPKCS1RSAEncryption     = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
 )
 
-type AlgorithmIdentifier struct {
+type algorithmIdentifier struct {
 	Algorithm  asn1.ObjectIdentifier
 	Parameters asn1.RawValue
 }
 
-type IssuerAndSerialNumber struct {
+type issuerAndSerialNumber struct {
 	Issuer       asn1.RawValue
 	SerialNumber *big.Int
 }
 
-type SignerInfo struct {
+type signerInfo struct {
 	Version                   int
-	SignedIdentifier          IssuerAndSerialNumber
-	DigestAlgorithm           AlgorithmIdentifier
-	AuthenticatedAttributes   Attributes `asn1:"tag:0"`
-	DigestEncryptionAlgorithm AlgorithmIdentifier
+	SignedIdentifier          issuerAndSerialNumber
+	DigestAlgorithm           algorithmIdentifier
+	AuthenticatedAttributes   []attribute `asn1:"tag:0"`
+	DigestEncryptionAlgorithm algorithmIdentifier
 	EncryptedDigest           []byte
 	UnauthenticatedAttributes int `asn1:"optional"`
 }
 
-type ContentInfo struct {
+type contentInfo struct {
 	ContentType asn1.ObjectIdentifier
 	Content     asn1.RawValue `asn1:"optional"`
 }
 
-type SignedData struct {
+type signedData struct {
 	Version          int
-	DigestAlgorithms []AlgorithmIdentifier `asn1:"set"`
-	ContentInfo      ContentInfo
+	DigestAlgorithms []algorithmIdentifier `asn1:"set"`
+	ContentInfo      contentInfo
 	Certificates     asn1.RawValue `asn1:"optional"`
 	Crls             asn1.RawValue `asn1:"optional"`
-	SignerInfos      []SignerInfo  `asn1:"set"`
+	SignerInfos      []signerInfo  `asn1:"set"`
 }
 
-type SignedDataWrapper struct {
+type signedDataWrapper struct {
 	Oid        asn1.ObjectIdentifier
 	SignedData asn1.RawValue
 }
 
 //
 
-type Attribute struct {
+type attribute struct {
 	Type   asn1.ObjectIdentifier
 	Values []interface{} `asn1:"set"`
 }
 
-type Attributes []Attribute
-
-func NewAttribute(typ asn1.ObjectIdentifier, val interface{}) Attribute {
+func newAttribute(typ asn1.ObjectIdentifier, val interface{}) attribute {
 	if t, ok := val.(time.Time); ok {
 		val = asn1.RawValue{Tag: 23, Bytes: []byte(t.Format("060102150405Z"))}
 	}
-	return Attribute{Type: typ, Values: []interface{}{val}}
+	return attribute{
+		Type: typ,
+		Values: []interface{}{
+			val,
+		},
+	}
 }
